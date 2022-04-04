@@ -1,4 +1,4 @@
-package com.example.app_push_mess
+package com.kechaou.appPushMess
 
 import io.flutter.embedding.android.FlutterActivity
 

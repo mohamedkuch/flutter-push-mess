@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.app_push_mess">
+    package="com.kechaou.appPushMess">
    <application
         android:label="app_push_mess"
         android:name="${applicationName}"

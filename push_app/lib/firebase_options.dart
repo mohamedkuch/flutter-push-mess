@@ -60,7 +60,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '884950978793',
     projectId: 'push-message-one-signal',
     storageBucket: 'push-message-one-signal.appspot.com',
-    iosClientId: '884950978793-1s91n0efkcfjqo6os761ttdl6jv92kh9.apps.googleusercontent.com',
-    iosBundleId: 'com.example.pushApp',
+    iosClientId:
+        '884950978793-1s91n0efkcfjqo6os761ttdl6jv92kh9.apps.googleusercontent.com',
+    iosBundleId: 'com.kechaou.pushApp',
   );
 }

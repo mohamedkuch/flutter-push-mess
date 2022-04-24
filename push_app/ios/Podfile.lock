@@ -37,6 +37,7 @@ DEPENDENCIES:
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
   - Flutter (from `Flutter`)
   - onesignal_flutter (from `.symlinks/plugins/onesignal_flutter/ios`)
+  - OneSignalXCFramework (< 4.0, >= 3.4.3)
 
 SPEC REPOS:
   trunk:
@@ -70,6 +71,6 @@ SPEC CHECKSUMS:
   OneSignalXCFramework: fe027712118f2862ab193b72270487f11450ea63
   PromisesObjC: 68159ce6952d93e17b2dfe273b8c40907db5ba58
 
-PODFILE CHECKSUM: aafe91acc616949ddb318b77800a7f51bffa2a4c
+PODFILE CHECKSUM: 03ca28ed87205e34dc49e939b087630e5d2ceb59
 
 COCOAPODS: 1.10.1

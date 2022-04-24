@@ -46,6 +46,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> configOneSignel() async {
     OneSignal.shared.setAppId('d905bc9b-a10e-4139-a301-77a39880d467');
+    OneSignal.shared.promptUserForPushNotificationPermission().then((accepted) {
+      // ignore: avoid_print
+      print("Accepted permission: $accepted");
+    });
   }
 
   void _incrementCounter() {

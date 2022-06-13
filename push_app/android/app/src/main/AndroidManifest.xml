@@ -4,7 +4,11 @@
         android:label="push_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        <activity
+
+       <meta-data android:name="com.onesignal.NotificationServiceExtension"
+           android:value="com.example.push_app.NotificationServiceExtension" />
+      
+       <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"

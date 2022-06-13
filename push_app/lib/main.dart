@@ -1,12 +1,13 @@
-// ignore_for_file: unnecessary_new
-
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:notifications/notifications.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,43 +42,10 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  Notifications? _notifications;
-  StreamSubscription<NotificationEvent>? _subscription;
-  List<NotificationEvent> _log = [];
-  bool started = false;
-
   @override
   void initState() {
     super.initState();
     configOneSignel();
-    initPlatformState();
-  }
-
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    startListening();
-  }
-
-  void onData(NotificationEvent event) {
-    setState(() {
-      _log.add(event);
-    });
-    print("##### onData" + event.toString());
-  }
-
-  void startListening() {
-    _notifications = Notifications();
-    try {
-      _subscription = _notifications!.notificationStream!.listen(onData);
-      setState(() => started = true);
-    } on NotificationException catch (exception) {
-      print(exception);
-    }
-  }
-
-  void stopListening() {
-    _subscription?.cancel();
-    setState(() => started = false);
   }
 
   Future<void> configOneSignel() async {
@@ -88,60 +56,165 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  Future getNotifications() async {
+    String userId = await getUserId();
+
+    if (userId == "not found") {
+      return [];
+    }
+
+    // http.Response response = await http.get(Uri.parse(
+    //     'https://push-notification-admin-panel.herokuapp.com/api/receivedNotification'));
+
+    var url = Uri.https("push-notification-admin-panel.herokuapp.com",
+        "/api/receivedNotification", {"user_id": userId});
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      return [];
+    }
+  }
+
+  Future<String> getUserId() async {
+    final status = await OneSignal.shared.getDeviceState();
+    final String? osUserID = status?.userId;
+
+    if (osUserID != null) {
+      return osUserID;
+    } else {
+      return "not found";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return new MaterialApp(
-      home: new Scaffold(
-        appBar: new AppBar(
-          title: const Text('Notifications Example app'),
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Notifications App'),
         ),
-        body: new Center(
-          child: new ListView.builder(
-            itemCount: _log.length,
-            reverse: true,
-            itemBuilder: (BuildContext context, int idx) {
-              final entry = _log[idx];
-              return Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Column(
-                  children: <Widget>[
-                    Container(
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.only(bottom: 10.0),
-                      child: Text(
-                        entry.title.toString(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        entry.message.toString(),
-                      ),
-                    ),
-                    Container(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        entry.timeStamp.toString().substring(0, 19),
-                        style: const TextStyle(
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                    const Divider(),
-                  ],
-                ),
-              );
-            },
+        body: Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
           ),
-        ),
-        floatingActionButton: new FloatingActionButton(
-          onPressed: started ? stopListening : startListening,
-          tooltip: 'Start/Stop sensing',
-          child:
-              started ? const Icon(Icons.stop) : const Icon(Icons.play_arrow),
+          width: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Padding(padding: EdgeInsets.all(10)),
+              const Text(
+                'Notifications user_id :',
+                textAlign: TextAlign.center,
+              ),
+              const Padding(padding: EdgeInsets.all(5)),
+              FutureBuilder(
+                future: getUserId(),
+                builder: (context, AsyncSnapshot snapshot) {
+                  if (snapshot.hasData) {
+                    return Text(snapshot.data.toString(),
+                        textAlign: TextAlign.center);
+                  } else {
+                    return const Text(
+                      'not found',
+                      textAlign: TextAlign.center,
+                    );
+                  }
+                },
+              ),
+              const Divider(
+                height: 40,
+                thickness: 1,
+                indent: 10,
+                endIndent: 10,
+                color: Colors.black,
+              ),
+              FutureBuilder(
+                future: getNotifications(),
+                builder: (context, AsyncSnapshot snapshot) {
+                  if (snapshot.hasData) {
+                    var finalData = snapshot.data.toList();
+                    return Expanded(
+                      child: ListView.builder(
+                        itemCount: finalData.length,
+                        itemBuilder: (context, index) {
+                          final item = finalData[index];
+                          return Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: Container(
+                              padding: const EdgeInsets.all(10.0),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                color: Colors.white,
+                              ),
+                              child: Column(
+                                children: <Widget>[
+                                  Container(
+                                    alignment: Alignment.centerLeft,
+                                    padding:
+                                        const EdgeInsets.only(bottom: 10.0),
+                                    child: Text(
+                                      item['title'],
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      item['content'],
+                                    ),
+                                    padding:
+                                        const EdgeInsets.only(bottom: 10.0),
+                                  ),
+                                  const Divider(
+                                    height: 1,
+                                    thickness: 1,
+                                    color: Colors.grey,
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.only(
+                                      top: 10.0,
+                                      bottom: 5,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      "sent time :" + item['sent_time'],
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      "received time :" + item['received_time'],
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  } else {
+                    return const Text(
+                      'No notifications found',
+                      textAlign: TextAlign.center,
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

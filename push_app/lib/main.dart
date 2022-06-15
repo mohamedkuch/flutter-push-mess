@@ -9,6 +9,8 @@ import 'firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
+import 'models/notification.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -42,10 +44,14 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  List<NotificationModel> notifications = <NotificationModel>[];
+  bool isPending = false;
+
   @override
   void initState() {
     super.initState();
     configOneSignel();
+    initNotifications();
   }
 
   Future<void> configOneSignel() async {
@@ -56,26 +62,41 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  Future getNotifications() async {
+  Future<List<NotificationModel>> getNotifications() async {
     String userId = await getUserId();
 
     if (userId == "not found") {
       return [];
     }
 
-    // http.Response response = await http.get(Uri.parse(
-    //     'https://push-notification-admin-panel.herokuapp.com/api/receivedNotification'));
+    var notificationsList = <NotificationModel>[];
 
+    // Get preferences
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys();
+    // ignore: prefer_collection_literals
+    final prefsMap = Map<String, dynamic>();
+    for (String key in keys) {
+      prefsMap[key] = prefs.get(key);
+    }
+    print('###### get not');
+    print(prefsMap);
+
+    // Get Notification from server
     var url = Uri.https("push-notification-admin-panel.herokuapp.com",
         "/api/receivedNotification", {"user_id": userId});
 
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      return [];
+      var results = json.decode(response.body);
+
+      for (var notificationJson in results) {
+        notificationsList.add(NotificationModel.fromJson(notificationJson));
+      }
     }
+
+    return notificationsList;
   }
 
   Future<String> getUserId() async {
@@ -87,6 +108,18 @@ class _MyHomePageState extends State<MyHomePage> {
     } else {
       return "not found";
     }
+  }
+
+  Future<void> initNotifications() async {
+    setState(() {
+      isPending = true;
+    });
+    var notificationsList = await getNotifications();
+
+    setState(() {
+      notifications.addAll(notificationsList);
+      isPending = false;
+    });
   }
 
   @override
@@ -125,94 +158,194 @@ class _MyHomePageState extends State<MyHomePage> {
                   }
                 },
               ),
+              const Padding(padding: EdgeInsets.all(5)),
+              ElevatedButton.icon(
+                onPressed: () {
+                  initNotifications();
+                },
+                icon: const Icon(
+                  Icons.refresh,
+                  size: 24.0,
+                ),
+                label: const Text('Refresh'), // <-- Text
+              ),
               const Divider(
-                height: 40,
+                height: 20,
                 thickness: 1,
                 indent: 10,
                 endIndent: 10,
                 color: Colors.black,
               ),
-              FutureBuilder(
-                future: getNotifications(),
-                builder: (context, AsyncSnapshot snapshot) {
-                  if (snapshot.hasData) {
-                    var finalData = snapshot.data.toList();
-                    return Expanded(
-                      child: ListView.builder(
-                        itemCount: finalData.length,
-                        itemBuilder: (context, index) {
-                          final item = finalData[index];
-                          return Padding(
-                            padding: const EdgeInsets.all(10.0),
-                            child: Container(
-                              padding: const EdgeInsets.all(10.0),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                color: Colors.white,
-                              ),
-                              child: Column(
-                                children: <Widget>[
-                                  Container(
-                                    alignment: Alignment.centerLeft,
-                                    padding:
-                                        const EdgeInsets.only(bottom: 10.0),
-                                    child: Text(
-                                      item['title'],
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      item['content'],
-                                    ),
-                                    padding:
-                                        const EdgeInsets.only(bottom: 10.0),
-                                  ),
-                                  const Divider(
-                                    height: 1,
-                                    thickness: 1,
-                                    color: Colors.grey,
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.only(
-                                      top: 10.0,
-                                      bottom: 5,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      "sent time :" + item['sent_time'],
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      "received time :" + item['received_time'],
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+              isPending
+                  ? Container(
+                      alignment: Alignment.topCenter,
+                      margin: const EdgeInsets.only(top: 20),
+                      child: const CircularProgressIndicator(
+                        value: 0.8,
                       ),
-                    );
-                  } else {
-                    return const Text(
-                      'No notifications found',
-                      textAlign: TextAlign.center,
-                    );
-                  }
-                },
-              ),
+                    )
+                  : Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: initNotifications,
+                        child: ListView.builder(
+                          itemCount: notifications.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.all(10.0),
+                              child: Container(
+                                padding: const EdgeInsets.all(10.0),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: Colors.white,
+                                ),
+                                child: Column(
+                                  children: <Widget>[
+                                    Container(
+                                      alignment: Alignment.centerLeft,
+                                      padding:
+                                          const EdgeInsets.only(bottom: 10.0),
+                                      child: Text(
+                                        notifications[index].title,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        notifications[index].content,
+                                      ),
+                                      padding:
+                                          const EdgeInsets.only(bottom: 10.0),
+                                    ),
+                                    const Divider(
+                                      height: 1,
+                                      thickness: 1,
+                                      color: Colors.grey,
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.only(
+                                        top: 10.0,
+                                        bottom: 5,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        "sent time :" +
+                                            notifications[index]
+                                                .sentTime
+                                                .toString(),
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        "received time :" +
+                                            notifications[index]
+                                                .receivedTime
+                                                .toString(),
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+              // FutureBuilder(
+              //   future: getNotifications(),
+              //   builder: (context, AsyncSnapshot snapshot) {
+              //     if (snapshot.hasData) {
+              //       var finalData = snapshot.data.toList();
+              //       return Expanded(
+              //         child: RefreshIndicator(
+              //           onRefresh: getNotifications,
+              //           child: ListView.builder(
+              //             itemCount: finalData.length,
+              //             itemBuilder: (context, index) {
+              //               final item = finalData[index];
+              //               return Padding(
+              //                 padding: const EdgeInsets.all(10.0),
+              //                 child: Container(
+              //                   padding: const EdgeInsets.all(10.0),
+              //                   decoration: BoxDecoration(
+              //                     borderRadius: BorderRadius.circular(10),
+              //                     color: Colors.white,
+              //                   ),
+              //                   child: Column(
+              //                     children: <Widget>[
+              //                       Container(
+              //                         alignment: Alignment.centerLeft,
+              //                         padding:
+              //                             const EdgeInsets.only(bottom: 10.0),
+              //                         child: Text(
+              //                           item['title'],
+              //                           style: const TextStyle(
+              //                             fontWeight: FontWeight.bold,
+              //                           ),
+              //                         ),
+              //                       ),
+              //                       Container(
+              //                         alignment: Alignment.centerLeft,
+              //                         child: Text(
+              //                           item['content'],
+              //                         ),
+              //                         padding:
+              //                             const EdgeInsets.only(bottom: 10.0),
+              //                       ),
+              //                       const Divider(
+              //                         height: 1,
+              //                         thickness: 1,
+              //                         color: Colors.grey,
+              //                       ),
+              //                       Container(
+              //                         padding: const EdgeInsets.only(
+              //                           top: 10.0,
+              //                           bottom: 5,
+              //                         ),
+              //                         alignment: Alignment.center,
+              //                         child: Text(
+              //                           "sent time :" + item['sent_time'],
+              //                           style: const TextStyle(
+              //                             fontSize: 10,
+              //                           ),
+              //                         ),
+              //                       ),
+              //                       Container(
+              //                         alignment: Alignment.center,
+              //                         child: Text(
+              //                           "received time :" +
+              //                               item['received_time'],
+              //                           style: const TextStyle(
+              //                             fontSize: 10,
+              //                           ),
+              //                         ),
+              //                       ),
+              //                     ],
+              //                   ),
+              //                 ),
+              //               );
+              //             },
+              //           ),
+              //         ),
+              //       );
+              //     } else {
+              //       return const Text(
+              //         'No notifications found',
+              //         textAlign: TextAlign.center,
+              //       );
+              //     }
+              //   },
+              // ),
             ],
           ),
         ),

@@ -24,7 +24,6 @@ class NotificationModel {
     content = json['content'];
     receivedTime = DateTime.parse(json['received_time']);
     notificationId = json['notification_id'];
-    sentTime = DateTime.parse(json['sent_time']);
-
+    sentTime = DateTime.fromMicrosecondsSinceEpoch(json['sent_time']);
   }
 }

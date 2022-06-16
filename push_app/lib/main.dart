@@ -65,40 +65,48 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> saveNotificationFromSharedPrefs() async {
     // Get preferences
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('action', '######## Start');
+
+    await prefs.reload();
     final keys = prefs.getKeys();
     // ignore: prefer_collection_literals
     final prefsMap = Map<String, dynamic>();
     for (String key in keys) {
       prefsMap[key] = prefs.get(key);
+
       final String? notificationString = prefs.getString(key);
 
       if (notificationString != null) {
         print(notificationString);
 
-        final notificationJson = json.decode(notificationString);
+        // final notificationJson = json.decode(notificationString);
 
-        // Save notifications in backend
-        var save_url = Uri.http("push-notification-admin-panel.herokuapp.com",
-            "/api/receivedNotification");
+        // // Save notifications in backend
+        // var save_url = Uri.http("push-notification-admin-panel.herokuapp.com",
+        //     "/api/receivedNotification");
 
-        final response = await http.post(
-          save_url,
-          headers: <String, String>{
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          body: jsonEncode(
-            <String, dynamic>{
-              'user_id': notificationJson['user_id'],
-              'title': notificationJson['title'],
-              'content': notificationJson['content'],
-              'received_time': notificationJson['received_time'],
-              'notification_id': notificationJson['notification_id'],
-              'sent_time': notificationJson['sent_time'],
-            },
-          ),
-        );
+        // final response = await http.post(
+        //   save_url,
+        //   headers: <String, String>{
+        //     'Content-Type': 'application/json; charset=UTF-8',
+        //   },
+        //   body: jsonEncode(
+        //     <String, dynamic>{
+        //       'user_id': notificationJson['user_id'],
+        //       'title': notificationJson['title'],
+        //       'content': notificationJson['content'],
+        //       'received_time': notificationJson['received_time'],
+        //       'notification_id': notificationJson['notification_id'],
+        //       'sent_time': notificationJson['sent_time'],
+        //     },
+        //   ),
+        // );
+        // if (response.statusCode == 200) {
+        //   await prefs.remove(key);
+        // }
       }
     }
+    print(prefsMap);
   }
 
   Future<List<NotificationModel>> getNotifications() async {
@@ -149,6 +157,7 @@ class _MyHomePageState extends State<MyHomePage> {
     var notificationsList = await getNotifications();
 
     setState(() {
+      notifications = [];
       notifications.addAll(notificationsList);
       isPending = false;
     });
@@ -199,7 +208,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   Icons.refresh,
                   size: 24.0,
                 ),
-                label: const Text('Refresh'), // <-- Text
+                label: const Text('Refresh & update'), // <-- Text
               ),
               const Divider(
                 height: 20,

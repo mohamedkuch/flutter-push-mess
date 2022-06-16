@@ -39,13 +39,19 @@ public class NotificationServiceExtension implements OSRemoteNotificationReceive
 
         SharedPreferences.Editor editor = preferences.edit();
 
+        /* Current time*/
+        java.util.Date dt = new java.util.Date();
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+        String currentTime = sdf.format(dt);
+
+        System.out.println(currentTime);
 
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("user_id", Objects.requireNonNull(OneSignal.getDeviceState()).getUserId());
             jsonBody.put("title", notification.getTitle());
             jsonBody.put("content", notification.getBody());
-            jsonBody.put("received_time", new Date());
+            jsonBody.put("received_time", currentTime);
             jsonBody.put("notification_id", notification.getNotificationId());
             jsonBody.put("sent_time", notification.getSentTime());
         } catch (JSONException e) {

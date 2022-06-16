@@ -62,6 +62,45 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  Future<void> saveNotificationFromSharedPrefs() async {
+    // Get preferences
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys();
+    // ignore: prefer_collection_literals
+    final prefsMap = Map<String, dynamic>();
+    for (String key in keys) {
+      prefsMap[key] = prefs.get(key);
+      final String? notificationString = prefs.getString(key);
+
+      if (notificationString != null) {
+        print(notificationString);
+
+        final notificationJson = json.decode(notificationString);
+
+        // Save notifications in backend
+        var save_url = Uri.http("push-notification-admin-panel.herokuapp.com",
+            "/api/receivedNotification");
+
+        final response = await http.post(
+          save_url,
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: jsonEncode(
+            <String, dynamic>{
+              'user_id': notificationJson['user_id'],
+              'title': notificationJson['title'],
+              'content': notificationJson['content'],
+              'received_time': notificationJson['received_time'],
+              'notification_id': notificationJson['notification_id'],
+              'sent_time': notificationJson['sent_time'],
+            },
+          ),
+        );
+      }
+    }
+  }
+
   Future<List<NotificationModel>> getNotifications() async {
     String userId = await getUserId();
 
@@ -71,22 +110,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
     var notificationsList = <NotificationModel>[];
 
-    // Get preferences
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys();
-    // ignore: prefer_collection_literals
-    final prefsMap = Map<String, dynamic>();
-    for (String key in keys) {
-      prefsMap[key] = prefs.get(key);
-    }
-    print('###### get not');
-    print(prefsMap);
+    await saveNotificationFromSharedPrefs();
 
     // Get Notification from server
-    var url = Uri.https("push-notification-admin-panel.herokuapp.com",
+    var get_url = Uri.https("push-notification-admin-panel.herokuapp.com",
         "/api/receivedNotification", {"user_id": userId});
 
-    final response = await http.get(url);
+    final response = await http.get(get_url);
 
     if (response.statusCode == 200) {
       var results = json.decode(response.body);
@@ -95,6 +125,8 @@ class _MyHomePageState extends State<MyHomePage> {
         notificationsList.add(NotificationModel.fromJson(notificationJson));
       }
     }
+
+    print("##### finished");
 
     return notificationsList;
   }

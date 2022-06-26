@@ -5,7 +5,7 @@ class NotificationModel {
   late String content;
   late DateTime receivedTime;
   late String notificationId;
-  late DateTime sentTime;
+  late dynamic sentTime;
 
   NotificationModel(
     this.id,
@@ -24,6 +24,10 @@ class NotificationModel {
     content = json['content'];
     receivedTime = DateTime.parse(json['received_time']);
     notificationId = json['notification_id'];
-    sentTime = DateTime.fromMicrosecondsSinceEpoch(json['sent_time']);
+    if (json.containsKey("sent_time")) {
+      sentTime = DateTime.fromMicrosecondsSinceEpoch(json['sent_time']);
+    } else {
+      sentTime = "None";
+    }
   }
 }

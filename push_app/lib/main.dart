@@ -11,6 +11,8 @@ import 'package:http/http.dart' as http;
 
 import 'models/notification.dart';
 
+import 'dart:io' show Platform;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -65,7 +67,6 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> saveNotificationFromSharedPrefs() async {
     // Get preferences
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('action', '######## Start');
 
     await prefs.reload();
     final keys = prefs.getKeys();
@@ -76,34 +77,34 @@ class _MyHomePageState extends State<MyHomePage> {
 
       final String? notificationString = prefs.getString(key);
 
-      if (notificationString != null) {
-        print(notificationString);
+      if (notificationString != null && key.contains('notification')) {
+        print("#######" + notificationString);
 
-        // final notificationJson = json.decode(notificationString);
+        final notificationJson = json.decode(notificationString);
 
-        // // Save notifications in backend
-        // var save_url = Uri.http("push-notification-admin-panel.herokuapp.com",
-        //     "/api/receivedNotification");
+        // Save notifications in backend
+        var save_url = Uri.http("push-notification-admin-panel.herokuapp.com",
+            "/api/receivedNotification");
 
-        // final response = await http.post(
-        //   save_url,
-        //   headers: <String, String>{
-        //     'Content-Type': 'application/json; charset=UTF-8',
-        //   },
-        //   body: jsonEncode(
-        //     <String, dynamic>{
-        //       'user_id': notificationJson['user_id'],
-        //       'title': notificationJson['title'],
-        //       'content': notificationJson['content'],
-        //       'received_time': notificationJson['received_time'],
-        //       'notification_id': notificationJson['notification_id'],
-        //       'sent_time': notificationJson['sent_time'],
-        //     },
-        //   ),
-        // );
-        // if (response.statusCode == 200) {
-        //   await prefs.remove(key);
-        // }
+        final response = await http.post(
+          save_url,
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: jsonEncode(
+            <String, dynamic>{
+              'user_id': notificationJson['user_id'],
+              'title': notificationJson['title'],
+              'content': notificationJson['content'],
+              'received_time': notificationJson['received_time'],
+              'notification_id': notificationJson['notification_id'],
+              'sent_time': notificationJson['sent_time'],
+            },
+          ),
+        );
+        if (response.statusCode == 200) {
+          await prefs.remove(key);
+        }
       }
     }
     print(prefsMap);
@@ -115,20 +116,24 @@ class _MyHomePageState extends State<MyHomePage> {
     if (userId == "not found") {
       return [];
     }
-
     var notificationsList = <NotificationModel>[];
 
-    await saveNotificationFromSharedPrefs();
+    if (Platform.isAndroid) {
+      await saveNotificationFromSharedPrefs();
+    }
 
-    // Get Notification from server
     var get_url = Uri.https("push-notification-admin-panel.herokuapp.com",
         "/api/receivedNotification", {"user_id": userId});
+
+    if (Platform.isIOS) {
+      get_url = Uri.https("push-notification-admin-panel.herokuapp.com",
+          "/api/receivedNotification", {"user_id": userId, "isIOS": "true"});
+    }
 
     final response = await http.get(get_url);
 
     if (response.statusCode == 200) {
       var results = json.decode(response.body);
-
       for (var notificationJson in results) {
         notificationsList.add(NotificationModel.fromJson(notificationJson));
       }
@@ -302,91 +307,6 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ),
 
-              // FutureBuilder(
-              //   future: getNotifications(),
-              //   builder: (context, AsyncSnapshot snapshot) {
-              //     if (snapshot.hasData) {
-              //       var finalData = snapshot.data.toList();
-              //       return Expanded(
-              //         child: RefreshIndicator(
-              //           onRefresh: getNotifications,
-              //           child: ListView.builder(
-              //             itemCount: finalData.length,
-              //             itemBuilder: (context, index) {
-              //               final item = finalData[index];
-              //               return Padding(
-              //                 padding: const EdgeInsets.all(10.0),
-              //                 child: Container(
-              //                   padding: const EdgeInsets.all(10.0),
-              //                   decoration: BoxDecoration(
-              //                     borderRadius: BorderRadius.circular(10),
-              //                     color: Colors.white,
-              //                   ),
-              //                   child: Column(
-              //                     children: <Widget>[
-              //                       Container(
-              //                         alignment: Alignment.centerLeft,
-              //                         padding:
-              //                             const EdgeInsets.only(bottom: 10.0),
-              //                         child: Text(
-              //                           item['title'],
-              //                           style: const TextStyle(
-              //                             fontWeight: FontWeight.bold,
-              //                           ),
-              //                         ),
-              //                       ),
-              //                       Container(
-              //                         alignment: Alignment.centerLeft,
-              //                         child: Text(
-              //                           item['content'],
-              //                         ),
-              //                         padding:
-              //                             const EdgeInsets.only(bottom: 10.0),
-              //                       ),
-              //                       const Divider(
-              //                         height: 1,
-              //                         thickness: 1,
-              //                         color: Colors.grey,
-              //                       ),
-              //                       Container(
-              //                         padding: const EdgeInsets.only(
-              //                           top: 10.0,
-              //                           bottom: 5,
-              //                         ),
-              //                         alignment: Alignment.center,
-              //                         child: Text(
-              //                           "sent time :" + item['sent_time'],
-              //                           style: const TextStyle(
-              //                             fontSize: 10,
-              //                           ),
-              //                         ),
-              //                       ),
-              //                       Container(
-              //                         alignment: Alignment.center,
-              //                         child: Text(
-              //                           "received time :" +
-              //                               item['received_time'],
-              //                           style: const TextStyle(
-              //                             fontSize: 10,
-              //                           ),
-              //                         ),
-              //                       ),
-              //                     ],
-              //                   ),
-              //                 ),
-              //               );
-              //             },
-              //           ),
-              //         ),
-              //       );
-              //     } else {
-              //       return const Text(
-              //         'No notifications found',
-              //         textAlign: TextAlign.center,
-              //       );
-              //     }
-              //   },
-              // ),
             ],
           ),
         ),
